@@ -67,6 +67,42 @@ def template_arithmetic_neg():
         "M=M+1",
     ])
 
+def template_arithmetic_eq():
+    return ('\n').join([
+        # pop X
+        "@SP",
+        "M=M-1",
+        "A=M",
+        "D=M",
+        "@X", 
+        "M=D",
+        # pop D
+        "@SP",
+        "M=M-1",
+        "A=M",
+        "D=M",
+        # X - D
+        "@X",
+        "D=D-M",
+        # eq
+        "@EQUAL",
+        "D;JEQ",
+        # push false
+        "@SP",
+        "A=M",
+        "M=0",
+        "@END",
+        "0;JMP",
+        # push true
+        "(EQUAL)",
+        "@SP",
+        "A=M",
+        "M=-1",
+        # move pointer forward
+        "(END)",
+        "@SP",
+        "M=M+1",
+    ])
 
 def translate_to_assembly_instruction(vm_instruction):
     if vm_instruction['command_type'] == "arithmetic":
@@ -76,6 +112,8 @@ def translate_to_assembly_instruction(vm_instruction):
             return template_arithmetic_add_sub("-")
         elif vm_instruction['arg1'] == "neg":
             return template_arithmetic_neg()
+        elif vm_instruction['arg1'] == "eq":
+            return template_arithmetic_eq()
     elif vm_instruction['command_type'] == "push" or vm_instruction['command_type'] == "pop":
         if vm_instruction['arg1'] == "constant":
             constant = vm_instruction['arg2']
