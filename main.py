@@ -31,20 +31,15 @@ def template_push_constant(constant):
 
 def template_arithmetic_add_sub(operation):
     return ('\n').join([
-        # pop X
+        # pop first operand to D
         "@SP",
         "M=M-1",
         "A=M",
         "D=M",
-        "@X", 
-        "M=D",
-        # pop D
+        # pop second operand and perform operation
         "@SP",
         "M=M-1",
         "A=M",
-        "D=M",
-        # X + D
-        "@X",
         f"D=D{operation}M",
         # push
         "@SP",
@@ -69,20 +64,15 @@ def template_arithmetic_neg():
 
 def template_arithmetic_eq():
     return ('\n').join([
-        # pop X
+        # pop first operand to D
         "@SP",
         "M=M-1",
         "A=M",
         "D=M",
-        "@X", 
-        "M=D",
-        # pop D
+        # pop second operand and perform operation
         "@SP",
         "M=M-1",
         "A=M",
-        "D=M",
-        # X - D
-        "@X",
         "D=D-M",
         # eq
         "@EQUAL",
