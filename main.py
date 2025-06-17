@@ -73,7 +73,7 @@ def template_arithmetic_eq(label_id):
         "@SP",
         "M=M-1",
         "A=M",
-        "D=D-M",
+        "D=M-D",
         # eq
         f"@EQUAL_{label_id}",
         "D;JEQ",
@@ -94,29 +94,29 @@ def template_arithmetic_eq(label_id):
         "M=M+1",
     ])
 
-def template_arithmetic_gt(label_id):
+def template_arithmetic_comparison(operation, label_id):
     return ('\n').join([
-        # pop first operand to D
+        # pop second operand to D
         "@SP",
         "M=M-1",
         "A=M",
         "D=M",
-        # pop second operand and perform operation
+        # pop first operand and compare
         "@SP",
         "M=M-1",
         "A=M",
-        "D=M-D",
-        # gt
-        f"@GT_{label_id}",
-        "D;JGT",
-        # push false
+        "D=M-D", # D = firist operand - second operand
+        # jump based on comparison
+        f"@TRUE_{label_id}",
+        f"D;J{operation}",
+        # push false (0)
         "@SP",
         "A=M",
         "M=0",
         f"@END_{label_id}",
         "0;JMP",
-        # push true
-        f"(GT_{label_id})",
+        # push true (-1)
+        f"(TRUE_{label_id})",
         "@SP",
         "A=M",
         "M=-1",
@@ -137,7 +137,9 @@ def translate_to_assembly_instruction(vm_instruction, vm_instruction_index):
         elif vm_instruction['arg1'] == "eq":
             return template_arithmetic_eq(vm_instruction_index)
         elif vm_instruction['arg1'] == "gt":
-            return template_arithmetic_gt(vm_instruction_index)
+            return template_arithmetic_comparison("GT", vm_instruction_index)
+        elif vm_instruction['arg1'] == "lt":
+            return template_arithmetic_comparison("LT", vm_instruction_index)
     elif vm_instruction['command_type'] == "push" or vm_instruction['command_type'] == "pop":
         if vm_instruction['arg1'] == "constant":
             constant = vm_instruction['arg2']
