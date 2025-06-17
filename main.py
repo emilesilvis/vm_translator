@@ -29,7 +29,7 @@ def template_push_constant(constant):
         "M=M+1"
     ])
 
-def template_arithmetic_add_sub(operation):
+def template_arithmetic_add_sub(operation, label_id):
     return ('\n').join([
         # pop first operand to D
         "@SP",
@@ -62,7 +62,7 @@ def template_arithmetic_neg():
         "M=M+1",
     ])
 
-def template_arithmetic_eq():
+def template_arithmetic_eq(label_id):
     return ('\n').join([
         # pop first operand to D
         "@SP",
@@ -75,35 +75,35 @@ def template_arithmetic_eq():
         "A=M",
         "D=D-M",
         # eq
-        "@EQUAL",
+        f"@EQUAL_{label_id}",
         "D;JEQ",
         # push false
         "@SP",
         "A=M",
         "M=0",
-        "@END",
+        f"@END_{label_id}",
         "0;JMP",
         # push true
-        "(EQUAL)",
+        f"(EQUAL_{label_id})",
         "@SP",
         "A=M",
         "M=-1",
         # move pointer forward
-        "(END)",
+        f"(END_{label_id})",
         "@SP",
         "M=M+1",
     ])
 
-def translate_to_assembly_instruction(vm_instruction):
+def translate_to_assembly_instruction(vm_instruction, vm_instruction_index):
     if vm_instruction['command_type'] == "arithmetic":
         if vm_instruction['arg1'] == "add":
-            return template_arithmetic_add_sub("+")
+            return template_arithmetic_add_sub("+", vm_instruction_index)
         elif vm_instruction['arg1'] == "sub":
-            return template_arithmetic_add_sub("-")
+            return template_arithmetic_add_sub("-", vm_instruction_index)
         elif vm_instruction['arg1'] == "neg":
             return template_arithmetic_neg()
         elif vm_instruction['arg1'] == "eq":
-            return template_arithmetic_eq()
+            return template_arithmetic_eq(vm_instruction_index)
     elif vm_instruction['command_type'] == "push" or vm_instruction['command_type'] == "pop":
         if vm_instruction['arg1'] == "constant":
             constant = vm_instruction['arg2']
@@ -120,15 +120,11 @@ def main():
         lines = [line.strip() for line in lines]
         lines = [line for line in lines if line]
 
-        for line in lines:
-            parsed_vm_instruction = parse_vm_instruction(line)
-            assembly_instruction = translate_to_assembly_instruction(parsed_vm_instruction)
-            print(assembly_instruction)
-
         with open(output_file, 'w') as out_file:
-            for line in lines:
+            for index, line in enumerate(lines):
                 parsed_vm_instruction = parse_vm_instruction(line)
-                assembly_instruction = translate_to_assembly_instruction(parsed_vm_instruction)
+                assembly_instruction = translate_to_assembly_instruction(parsed_vm_instruction, index)
+                print(assembly_instruction)
                 out_file.write(assembly_instruction + '\n')
 
 if __name__ == "__main__":
