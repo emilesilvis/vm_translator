@@ -55,7 +55,7 @@ def template_arithmetic_add_sub(operation):
         "M=M+1",
     ])
 
-def template_aritmetic_neg():
+def template_arithmetic_neg():
     return ('\n').join([
         # negate
         "@SP",
@@ -67,6 +67,7 @@ def template_aritmetic_neg():
         "M=M+1",
     ])
 
+
 def translate_to_assembly_instruction(vm_instruction):
     if vm_instruction['command_type'] == "arithmetic":
         if vm_instruction['arg1'] == "add":
@@ -74,7 +75,7 @@ def translate_to_assembly_instruction(vm_instruction):
         elif vm_instruction['arg1'] == "sub":
             return template_arithmetic_add_sub("-")
         elif vm_instruction['arg1'] == "neg":
-            return template_aritmetic_neg()
+            return template_arithmetic_neg()
     elif vm_instruction['command_type'] == "push" or vm_instruction['command_type'] == "pop":
         if vm_instruction['arg1'] == "constant":
             constant = vm_instruction['arg2']
