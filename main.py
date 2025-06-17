@@ -94,6 +94,38 @@ def template_arithmetic_eq(label_id):
         "M=M+1",
     ])
 
+def template_arithmetic_gt(label_id):
+    return ('\n').join([
+        # pop first operand to D
+        "@SP",
+        "M=M-1",
+        "A=M",
+        "D=M",
+        # pop second operand and perform operation
+        "@SP",
+        "M=M-1",
+        "A=M",
+        "D=M-D",
+        # gt
+        f"@GT_{label_id}",
+        "D;JGT",
+        # push false
+        "@SP",
+        "A=M",
+        "M=0",
+        f"@END_{label_id}",
+        "0;JMP",
+        # push true
+        f"(GT_{label_id})",
+        "@SP",
+        "A=M",
+        "M=-1",
+        # move pointer forward
+        f"(END_{label_id})",
+        "@SP",
+        "M=M+1",
+    ])
+
 def translate_to_assembly_instruction(vm_instruction, vm_instruction_index):
     if vm_instruction['command_type'] == "arithmetic":
         if vm_instruction['arg1'] == "add":
@@ -104,6 +136,8 @@ def translate_to_assembly_instruction(vm_instruction, vm_instruction_index):
             return template_arithmetic_neg()
         elif vm_instruction['arg1'] == "eq":
             return template_arithmetic_eq(vm_instruction_index)
+        elif vm_instruction['arg1'] == "gt":
+            return template_arithmetic_gt(vm_instruction_index)
     elif vm_instruction['command_type'] == "push" or vm_instruction['command_type'] == "pop":
         if vm_instruction['arg1'] == "constant":
             constant = vm_instruction['arg2']
