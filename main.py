@@ -42,6 +42,102 @@ def template_push_constant(constant):
             "M=M+1"
     ])
 
+def base_address_pointer(segment):
+    if segment == "local":
+        return 1
+    elif segment == "argument":
+        return 2
+    elif segment == "this":
+        return 3
+    elif segment == "that":
+        return 4
+
+def template_pop(segment, i):
+    if segment == "temp":
+        return ('\n').join([
+                # pop to D
+                "@SP",
+                "M=M-1",
+                "A=M",
+                "D=M",
+                # write D to temp address (temp uses direct addressing (R5-R12))
+                f"@{5 + int(i)}",
+                "M=D"
+            ])
+    else:
+        return ('\n').join([
+                # store segment address in R13
+                f"@{base_address_pointer(segment)}",
+                "D=M",
+                f"@{i}",
+                "D=D+A",
+                "@13",
+                "M=D",
+                # pop to D
+                "@SP",
+                "M=M-1",
+                "A=M",
+                "D=M",
+                # write D to segment address
+                "@13",
+                "A=M",
+                "M=D"
+            ])
+
+def template_push(segment, i):
+    if segment == "temp":
+        return ('\n').join([
+                # temp uses direct addressing (R5-R12)
+                f"@{5 + int(i)}",
+                "D=M",
+                # push D to stack
+                "@SP",
+                "A=M",
+                "M=D",
+                # move pointer forward
+                "@SP",
+                "M=M+1"
+            ])
+    else:
+        return ('\n').join([
+                # store segment address in D
+                f"@{base_address_pointer(segment)}",
+                "D=M",
+                f"@{i}",
+                "D=D+A",
+                # read contents of segment address to D
+                "A=D",
+                "D=M",
+                # push D to stack
+                "@SP",
+                "A=M",
+                "M=D",
+                # move pointer forward
+                "@SP",
+                "M=M+1"
+            ])
+
+def template_pop_static(filename, i):
+    return ('\n').join([
+        "@SP",
+        "M=M-1",
+        "A=M",
+        "D=M",
+        f"@{filename}.{i}",
+        "M=D"
+    ])
+
+def template_push_static(filename, i):
+    return ('\n').join([
+        f"@{filename}.{i}",
+        "D=M",
+        "@SP",
+        "A=M", 
+        "M=D",
+        "@SP",
+        "M=M+1"
+    ])
+
 def template_arithmetic_add_sub(operation, label_id):
     if operation == "+":
         assembly_operation = "D=D+M"
@@ -178,7 +274,8 @@ def template_logical_not():
         "M=M+1",
     ])
 
-def translate_to_assembly_instruction(vm_instruction, vm_instruction_index):
+def translate_to_assembly_instruction(vm_instruction, vm_instruction_index, filename):
+    class_name = filename.split("/")[-1].replace(".vm", "")
     if vm_instruction['command_type'] == "arithmetic":
         if vm_instruction['arg1'] == "add":
             return template_arithmetic_add_sub("+", vm_instruction_index)
@@ -202,6 +299,16 @@ def translate_to_assembly_instruction(vm_instruction, vm_instruction_index):
         if vm_instruction['arg1'] == "constant":
             constant = vm_instruction['arg2']
             return template_push_constant(constant)
+        elif vm_instruction['command_type'] == "pop":
+            if vm_instruction['arg1'] == "static":
+                return template_pop_static(class_name, vm_instruction['arg2'])
+            else:
+                return template_pop(vm_instruction['arg1'], vm_instruction['arg2'])
+        elif vm_instruction['command_type'] == "push":
+            if vm_instruction['arg1'] == "static":
+                return template_push_static(class_name, vm_instruction['arg2'])
+            else:
+                return template_push(vm_instruction['arg1'], vm_instruction['arg2'])
 
 def main():
     if len(sys.argv) != 2:
@@ -217,7 +324,7 @@ def main():
         with open(output_file, 'w') as out_file:
             for index, line in enumerate(lines):
                 parsed_vm_instruction = parse_vm_instruction(line)
-                assembly_instruction = translate_to_assembly_instruction(parsed_vm_instruction, index)
+                assembly_instruction = translate_to_assembly_instruction(parsed_vm_instruction, index, input_file)
                 print(assembly_instruction)
                 out_file.write(assembly_instruction + '\n')
 
