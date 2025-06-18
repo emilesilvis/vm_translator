@@ -30,17 +30,22 @@ def template_push_constant(constant):
     ])
 
 def template_arithmetic_add_sub(operation, label_id):
+    if operation == "+":
+        assembly_operation = "D=D+M"
+    else:
+        assembly_operation = "D=M-D"
+
     return ('\n').join([
-        # pop first operand to D
+        # pop second operand to D
         "@SP",
         "M=M-1",
         "A=M",
         "D=M",
-        # pop second operand and perform operation
+        # pop first operand and perform operation
         "@SP",
         "M=M-1",
         "A=M",
-        f"D=D{operation}M",
+        assembly_operation, # D = first operand - second operand
         # push
         "@SP",
         "A=M",
