@@ -179,6 +179,8 @@ def translate_to_assembly_instruction(vm_instruction, vm_instruction_index):
             return template_arithmetic_comparison("LT", vm_instruction_index)
         elif vm_instruction['arg1'] == "and":
             return template_logical_operation("&", vm_instruction_index)
+        elif vm_instruction['arg1'] == "or":
+            return template_logical_operation("|", vm_instruction_index)
     elif vm_instruction['command_type'] == "push" or vm_instruction['command_type'] == "pop":
         if vm_instruction['arg1'] == "constant":
             constant = vm_instruction['arg2']
