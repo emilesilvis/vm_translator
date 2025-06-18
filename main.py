@@ -162,7 +162,6 @@ def template_logical_operation(operation):
         "M=M+1",
     ])
 
-# TEST!
 def template_logical_not():
     return ('\n').join([
         # pop first operand to D
