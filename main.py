@@ -162,6 +162,23 @@ def template_logical_operation(operation):
         "M=M+1",
     ])
 
+# TEST!
+def template_logical_not():
+    return ('\n').join([
+        # pop first operand to D
+        "@SP",
+        "M=M-1",
+        "A=M",
+        "D=M",
+        # not
+        "D=!D",
+        # push
+        "M=D",
+        # move pointer forward
+        "@SP",
+        "M=M+1",
+    ])
+
 def translate_to_assembly_instruction(vm_instruction, vm_instruction_index):
     if vm_instruction['command_type'] == "arithmetic":
         if vm_instruction['arg1'] == "add":
@@ -180,6 +197,8 @@ def translate_to_assembly_instruction(vm_instruction, vm_instruction_index):
             return template_logical_operation("&")
         elif vm_instruction['arg1'] == "or":
             return template_logical_operation("|")
+        elif vm_instruction['arg1'] == "not":
+            return template_logical_not()
     elif vm_instruction['command_type'] == "push" or vm_instruction['command_type'] == "pop":
         if vm_instruction['arg1'] == "constant":
             constant = vm_instruction['arg2']
