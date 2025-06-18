@@ -18,15 +18,28 @@ def parse_vm_instruction(line):
     return vm_instruction
 
 def template_push_constant(constant):
-    return ('\n').join([
-        f'@{constant}',
-        "D=A",
-        "@SP",
-        "A=M",
-        "M=D",
-        # move pointer forward
-        "@SP",
-        "M=M+1"
+    if int(constant) < 0:
+        return ('\n').join([
+            f'@{abs(int(constant))}',
+            "D=A",
+            "D=-D", #negate
+            "@SP",
+            "A=M",
+            "M=D",
+            # move pointer forward
+            "@SP",
+            "M=M+1"
+    ])
+    else:
+        return ('\n').join([
+            f'@{constant}',
+            "D=A",
+            "@SP",
+            "A=M",
+            "M=D",
+            # move pointer forward
+            "@SP",
+            "M=M+1"
     ])
 
 def template_arithmetic_add_sub(operation, label_id):
@@ -131,6 +144,25 @@ def template_arithmetic_comparison(operation, label_id):
         "M=M+1",
     ])
 
+def template_logical_operation(operation, label_id):
+    return ('\n').join([
+        # pop first operand to D
+        "@SP",
+        "M=M-1",
+        "A=M",
+        "D=M",
+        # pop second operand and perform logical operation
+        "@SP",
+        "M=M-1",
+        "A=M",
+        f"D=D{operation}M",
+        "M=D",
+        # move pointer forward
+        f"(END_{label_id})",
+        "@SP",
+        "M=M+1",
+    ])
+
 def translate_to_assembly_instruction(vm_instruction, vm_instruction_index):
     if vm_instruction['command_type'] == "arithmetic":
         if vm_instruction['arg1'] == "add":
@@ -145,6 +177,8 @@ def translate_to_assembly_instruction(vm_instruction, vm_instruction_index):
             return template_arithmetic_comparison("GT", vm_instruction_index)
         elif vm_instruction['arg1'] == "lt":
             return template_arithmetic_comparison("LT", vm_instruction_index)
+        elif vm_instruction['arg1'] == "and":
+            return template_logical_operation("&", vm_instruction_index)
     elif vm_instruction['command_type'] == "push" or vm_instruction['command_type'] == "pop":
         if vm_instruction['arg1'] == "constant":
             constant = vm_instruction['arg2']
