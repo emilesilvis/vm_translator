@@ -144,7 +144,7 @@ def template_arithmetic_comparison(operation, label_id):
         "M=M+1",
     ])
 
-def template_logical_operation(operation, label_id):
+def template_logical_operation(operation):
     return ('\n').join([
         # pop first operand to D
         "@SP",
@@ -158,7 +158,6 @@ def template_logical_operation(operation, label_id):
         f"D=D{operation}M",
         "M=D",
         # move pointer forward
-        f"(END_{label_id})",
         "@SP",
         "M=M+1",
     ])
@@ -178,9 +177,9 @@ def translate_to_assembly_instruction(vm_instruction, vm_instruction_index):
         elif vm_instruction['arg1'] == "lt":
             return template_arithmetic_comparison("LT", vm_instruction_index)
         elif vm_instruction['arg1'] == "and":
-            return template_logical_operation("&", vm_instruction_index)
+            return template_logical_operation("&")
         elif vm_instruction['arg1'] == "or":
-            return template_logical_operation("|", vm_instruction_index)
+            return template_logical_operation("|")
     elif vm_instruction['command_type'] == "push" or vm_instruction['command_type'] == "pop":
         if vm_instruction['arg1'] == "constant":
             constant = vm_instruction['arg2']
