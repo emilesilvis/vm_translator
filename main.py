@@ -138,6 +138,28 @@ def template_push_static(filename, i):
         "M=M+1"
     ])
 
+def template_pop_pointer(i):
+    return ('\n').join([
+        "@SP",
+        "M=M-1",
+        "A=M",
+        "D=M",
+        f"@R{int(i)+3}",
+        "M=D"
+    ])
+
+def template_push_pointer(i):
+    return ('\n').join([
+        f"@R{int(i)+3}",
+        "D=M",
+        "@SP",
+        "A=M",
+        "M=D",
+        # move pointer forward
+        "@SP",
+        "M=M+1"
+    ])
+
 def template_arithmetic_add_sub(operation, label_id):
     if operation == "+":
         assembly_operation = "D=D+M"
@@ -302,11 +324,15 @@ def translate_to_assembly_instruction(vm_instruction, vm_instruction_index, file
         elif vm_instruction['command_type'] == "pop":
             if vm_instruction['arg1'] == "static":
                 return template_pop_static(class_name, vm_instruction['arg2'])
+            elif vm_instruction['arg1'] == "pointer":
+                return template_pop_pointer(vm_instruction['arg2'])
             else:
                 return template_pop(vm_instruction['arg1'], vm_instruction['arg2'])
         elif vm_instruction['command_type'] == "push":
             if vm_instruction['arg1'] == "static":
                 return template_push_static(class_name, vm_instruction['arg2'])
+            elif vm_instruction['arg1'] == "pointer":
+                return template_push_pointer(vm_instruction['arg2'])
             else:
                 return template_push(vm_instruction['arg1'], vm_instruction['arg2'])
 
