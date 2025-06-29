@@ -12,7 +12,7 @@ def parse_vm_instruction(line):
         vm_instruction['command_type'] = "pop"
         vm_instruction['arg1'] = line[1]
         vm_instruction['arg2'] = line[2]
-    elif (line[0] == "goto" or line[0] == "label"):
+    elif (line[0] == "goto" or line[0] == "if-goto" or line[0] == "label"):
         vm_instruction['command_type'] = line[0]
         vm_instruction['arg1'] = line[1]
     else:
@@ -305,6 +305,18 @@ def teplate_goto(label):
         "0;JMP"
     ])
 
+def template_if_goto(label):
+            return ('\n').join([
+                # pop to D
+                "@SP",
+                "M=M-1",
+                "A=M",
+                "D=M",
+                # jmp
+                f"@{label}",
+                "D;JNE"
+            ])
+
 def teplate_label(label):
     return f"({label})"
 
@@ -349,6 +361,8 @@ def translate_to_assembly_instruction(vm_instruction, vm_instruction_index, file
                 return template_push(vm_instruction['arg1'], vm_instruction['arg2'])
     elif vm_instruction['command_type'] == "goto":
         return teplate_goto(vm_instruction['arg1'])
+    elif vm_instruction['command_type'] == "if-goto":
+        return template_if_goto(vm_instruction['arg1'])
     elif vm_instruction['command_type'] == "label":
         return teplate_label(vm_instruction['arg1'])
 
