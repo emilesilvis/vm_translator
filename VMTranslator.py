@@ -12,6 +12,9 @@ def parse_vm_instruction(line):
         vm_instruction['command_type'] = "pop"
         vm_instruction['arg1'] = line[1]
         vm_instruction['arg2'] = line[2]
+    elif (line[0] == "goto" or line[0] == "label"):
+        vm_instruction['command_type'] = line[0]
+        vm_instruction['arg1'] = line[1]
     else:
         vm_instruction['command_type'] = "arithmetic"
         vm_instruction['arg1'] = line[0]
@@ -296,6 +299,15 @@ def template_logical_not():
         "M=M+1",
     ])
 
+def teplate_goto(label):
+    return ('\n').join([
+        f"@{label}",
+        "0;JMP"
+    ])
+
+def teplate_label(label):
+    return f"({label})"
+
 def translate_to_assembly_instruction(vm_instruction, vm_instruction_index, filename):
     class_name = filename.split("/")[-1].replace(".vm", "")
     if vm_instruction['command_type'] == "arithmetic":
@@ -335,6 +347,10 @@ def translate_to_assembly_instruction(vm_instruction, vm_instruction_index, file
                 return template_push_pointer(vm_instruction['arg2'])
             else:
                 return template_push(vm_instruction['arg1'], vm_instruction['arg2'])
+    elif vm_instruction['command_type'] == "goto":
+        return teplate_goto(vm_instruction['arg1'])
+    elif vm_instruction['command_type'] == "label":
+        return teplate_label(vm_instruction['arg1'])
 
 def main():
     if len(sys.argv) != 2:
