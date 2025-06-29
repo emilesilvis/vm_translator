@@ -1,0 +1,15 @@
+// This file is part of www.nand2tetris.org
+// and the book "The Elements of Computing Systems"
+// by Nisan and Schocken, MIT Press.
+
+// Pushes constants and checks less than.
+
+push constant 1
+push constant 2
+lt
+push constant 3
+push constant 2
+lt
+push constant 7
+push constant 8
+lt
