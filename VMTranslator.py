@@ -5,8 +5,8 @@ import glob
 
 def parse_vm_instruction(line):
     vm_instruction = {}
-    line = line.split(" ")
-    if (line[0] == "push" or line[0] == "pop" or line[0] == "function"):
+    line = line.split()
+    if (line[0] == "push" or line[0] == "pop" or line[0] == "function" or line[0] == "call"):
         vm_instruction['command_type'] = line[0]
         vm_instruction['arg1'] = line[1]
         vm_instruction['arg2'] = line[2]
@@ -299,41 +299,133 @@ def template_logical_not():
         "M=M+1",
     ])
 
-def template_goto(label):
-    return ('\n').join([
-        f"@{label}",
+def template_goto(label, function):
+    return '\n'.join([
+        f"@{function}${label}",
         "0;JMP"
     ])
 
-def template_if_goto(label):
-            return ('\n').join([
-                # pop to D
-                "@SP",
-                "M=M-1",
-                "A=M",
-                "D=M",
-                # jmp
-                f"@{label}",
-                "D;JNE"
-            ])
+def template_if_goto(label, function):
+    return '\n'.join([
+        "@SP",
+        "M=M-1",
+        "A=M",
+        "D=M",
+        f"@{function}${label}",
+        "D;JNE"
+    ])
 
-def template_label(label):
-    return f"({label})"
+def template_label(label, function):
+    return f"({function}${label})"
 
-def tempalte_call(function_name, n_args):
-    return "call"
+def template_call(function_name, n_args, vm_instruction_index):
+    # 1. Push unique return address
+    push_ret_address = '\n'.join([
+        f"@{function_name}$ret.{vm_instruction_index}",
+        "D=A", # D = unique label
+        "@SP",
+        "A=M",
+        "M=D", # Push
+        "@SP",
+        "M=M+1" # Move SP forward
+    ])
+
+    # 2. Save caller frame pointers (LCL, ARG, THIS, THAT)
+    save_lcl = '\n'.join([
+        "@LCL",
+        "D=M",
+        "@SP",
+        "A=M",
+        "M=D",
+        "@SP",
+        "M=M+1"
+    ])
+
+    save_arg = '\n'.join([
+        "@ARG",
+        "D=M",
+        "@SP",
+        "A=M",
+        "M=D",
+        "@SP",
+        "M=M+1"
+    ])
+
+    save_this = '\n'.join([
+        "@THIS",
+        "D=M",
+        "@SP",
+        "A=M",
+        "M=D",
+        "@SP",
+        "M=M+1"
+    ])
+    
+    save_that = '\n'.join([
+        "@THAT",
+        "D=M",
+        "@SP",
+        "A=M",
+        "M=D",
+        "@SP",
+        "M=M+1"
+    ])
+
+    # 3. Reposition ARG to first argument so callee sees its arguments
+    reposition_arg = '\n'.join([
+        "@SP", # Start with SP
+        "D=M",
+        f"@{n_args}", # Minus n arguments
+        "D=D-A",
+        "@5", # Minus length of frame (5)
+        "D=D-A",
+        "@ARG", # Push to ARG
+        "M=D"
+    ])
+
+    # 4. Set LCL = SP (base of callee's frame)
+    set_lcl = '\n'.join([
+        "@SP",
+        "D=M",
+        "@LCL",
+        "M=D"
+    ])
+
+    # 5. Go to callee
+    goto_function = '\n'.join([
+        f"@{function_name}",
+        "0;JMP"
+    ])
+
+    # 6. Declare return address
+    return_address = f"({function_name}$ret.{vm_instruction_index})"
+
+    return ('\n').join([
+        push_ret_address,
+        save_lcl,
+        save_arg,
+        save_this,
+        save_that,
+        reposition_arg,
+        set_lcl,
+        goto_function,
+        return_address
+    ])
 
 def template_function(function_name, n_vars):
-    lines = []
-
-    function_name_label = template_label(function_name)
-    lines.append(f"{function_name_label}")
-
+    lines = [f"({function_name})"]
+    
+    # Initialize local variables directly
     for n in range(int(n_vars)):
-        lines.append(template_push_constant(0))
-        lines.append(template_pop('local', n))
-
-    return ('\n').join(lines)
+        lines.extend([
+            "@SP",     # Get current SP
+            "A=M",     # Point to top of stack
+            "M=0",     # Set to 0
+            "@SP",     # Move SP forward
+            "M=M+1"
+        ])
+    
+    return '\n'.join(lines)
 
 def template_return():
     # 1. Freeze a pointer to the current (callee) frame.
@@ -428,7 +520,24 @@ def template_return():
         goto_ret
     ])
 
+def template_bootstrap():
+    # Initialise SP at 256
+    bootstrap_code = ('\n').join([
+        "@256",
+        "D=A",
+        "@SP",
+        "M=D",
+    ])
+
+    # Call Sys.init 0
+    bootstrap_code += '\n' + template_call("Sys.init", 0, 0)
+
+    return bootstrap_code
+
+current_function = ''
 def translate_to_assembly_instruction(vm_instruction, vm_instruction_index, filename):
+    global current_function
+
     class_name = filename.split("/")[-1].replace(".vm", "")
     if vm_instruction['command_type'] == "arithmetic":
         if vm_instruction['arg1'] == "add":
@@ -468,17 +577,20 @@ def translate_to_assembly_instruction(vm_instruction, vm_instruction_index, file
             else:
                 return template_push(vm_instruction['arg1'], vm_instruction['arg2'])
     elif vm_instruction['command_type'] == "goto":
-        return template_goto(vm_instruction['arg1'])
+        return template_goto(vm_instruction['arg1'], current_function)
     elif vm_instruction['command_type'] == "if-goto":
-        return template_if_goto(vm_instruction['arg1'])
+        return template_if_goto(vm_instruction['arg1'], current_function)
     elif vm_instruction['command_type'] == "label":
-        return template_label(vm_instruction['arg1'])
+        return template_label(vm_instruction['arg1'], current_function)
+    elif vm_instruction['command_type'] == "call":
+        return template_call(vm_instruction['arg1'], vm_instruction['arg2'], vm_instruction_index)
     elif vm_instruction['command_type'] == "function":
+        current_function = vm_instruction['arg1']
         return template_function(vm_instruction['arg1'], vm_instruction['arg2'])
     elif vm_instruction['command_type'] == "return":
         return template_return()
 
-def translate_vm_file(input_path):
+def translate_vm_file(input_path, global_counter):
     assembly_instructions = []
     with open(input_path, 'r') as file:
         lines = [re.sub(r'//.*$', '', line) for line in file]
@@ -487,30 +599,42 @@ def translate_vm_file(input_path):
 
         for index, line in enumerate(lines):
             parsed_vm_instruction = parse_vm_instruction(line)
-            assembly_instruction = translate_to_assembly_instruction(parsed_vm_instruction, index, input_path)
+            assembly_instruction = translate_to_assembly_instruction(parsed_vm_instruction, global_counter + index, input_path)
             assembly_instructions.append(assembly_instruction)
         
-        return assembly_instructions
+        return assembly_instructions, len(lines)
 
 def main():
     if len(sys.argv) != 2:
         print("Usage: python main.py <input_file.vm> or /<directory with *.vm files>")
         sys.exit(1)
+
     input_path = sys.argv[1]
+
+    bootstrap_code = template_bootstrap()
+
     if os.path.isfile(input_path):
         output_file = input_path.replace('.vm', '.asm')
         with open(output_file, 'w') as out_file:
-            for assembly_instruction in translate_vm_file(input_path):
+            for assembly_instruction in translate_vm_file(input_path, 0)[0]:
                 print(assembly_instruction)
                 out_file.write(assembly_instruction + '\n')
 
     elif os.path.isdir(input_path):
-        output_file = input_path + '.asm'
+        output_file = os.path.join(input_path, os.path.basename(input_path) + '.asm')
         vm_files = glob.glob(os.path.join(input_path, "*.vm"))
         assembly_instructions = []
+
+        global_counter = 0
         for file in vm_files:
-            assembly_instructions.extend(translate_vm_file(file))
+            file_instructions, instruction_count = translate_vm_file(file, global_counter)
+            assembly_instructions.extend(file_instructions)
+            global_counter += instruction_count
+
         with open(output_file, 'w') as out_file:
+            out_file.write(bootstrap_code + '\n')
+            print(bootstrap_code)
+
             for assembly_instruction in assembly_instructions:
                 print(assembly_instruction)
                 out_file.write(assembly_instruction + '\n')
