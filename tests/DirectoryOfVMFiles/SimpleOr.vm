@@ -1,0 +1,15 @@
+// This file is part of www.nand2tetris.org
+// and the book "The Elements of Computing Systems"
+// by Nisan and Schocken, MIT Press.
+
+// Pushes constants and checks logical and.
+
+push constant -1
+push constant 0
+or
+push constant 0
+push constant 0
+or
+push constant 0
+push constant -1
+or
