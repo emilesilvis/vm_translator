@@ -4,17 +4,15 @@ import re
 def parse_vm_instruction(line):
     vm_instruction = {}
     line = line.split(" ")
-    if line[0] == "push":
-        vm_instruction['command_type'] = "push"
-        vm_instruction['arg1'] = line[1]
-        vm_instruction['arg2'] = line[2]
-    elif line[0] == "pop":
-        vm_instruction['command_type'] = "pop"
+    if (line[0] == "push" or line[0] == "pop" or line[0] == "function"):
+        vm_instruction['command_type'] = line[0]
         vm_instruction['arg1'] = line[1]
         vm_instruction['arg2'] = line[2]
     elif (line[0] == "goto" or line[0] == "if-goto" or line[0] == "label"):
         vm_instruction['command_type'] = line[0]
         vm_instruction['arg1'] = line[1]
+    elif (line[0] == "return"):
+        vm_instruction['command_type'] = line[0]
     else:
         vm_instruction['command_type'] = "arithmetic"
         vm_instruction['arg1'] = line[0]
@@ -320,6 +318,114 @@ def template_if_goto(label):
 def template_label(label):
     return f"({label})"
 
+def tempalte_call(function_name, n_args):
+    return "call"
+
+def template_function(function_name, n_vars):
+    lines = []
+
+    function_name_label = template_label(function_name)
+    lines.append(f"{function_name_label}")
+
+    for n in range(int(n_vars)):
+        lines.append(template_push_constant(0))
+        lines.append(template_pop('local', n))
+
+    return ('\n').join(lines)
+
+def template_return():
+    # 1. Freeze a pointer to the current (callee) frame.
+    # FRAME = LCL (e.g. store in R13)
+    frame_pointer = ('\n').join([
+        "@LCL",
+        "D=M",
+        "@R13",
+        "M=D"
+    ])
+
+    # 2. Fetch the address the caller expects to jump to. 
+    # RET = *(FRAME-5) (e.g. R14)
+    ret = ('\n').join([
+        "@R13", # Get FRAME (see #1)
+        "D=M", # Read value of FRAME pointer
+        "@5", 
+        "D=D-A", # Minus 5 from FRAME pointer to get to return address
+        "A=D", # Set A to point to return address location
+        "D=M", # Read the return address pointer
+        "@R14",
+        "M=D" # Save it to RET/@R14
+    ])
+
+    # 3. Place the function’s return value where the caller expects it. 
+    # *ARG = pop()
+    arg_pop = ('\n').join([
+        "@SP",
+        "AM=M-1", # Move SP back one (because this is where the returned value is)
+        "D=M", # Popped value in D
+        "@ARG", # Address @ARG pointer
+        "A=M",
+        "M=D" # Write popped value to ARG
+    ])
+
+    # 4. Restore the caller’s view of the stack pointer.
+    # SP = ARG + 1
+    restore_sp = ('\n').join([
+        "@ARG",
+        "D=M+1",
+        "@SP",
+        "M=D"
+    ])
+
+    # 5. Reinstall the caller’s segment pointers. 
+    # THAT = *(FRAME-1)
+    # THIS = *(FRAME-2)
+    # ARG  = *(FRAME-3)
+    # LCL  = *(FRAME-4)
+
+    reinstall_frame = ('\n').join([
+        "@R13", # Get FRAME
+        "AM=M-1", # Decrement FRAME
+        "D=M", # Read FRAME
+        "@THAT", # Address segment to be restore
+        "M=D", # Restore segment
+
+        "@R13", # Get FRAME
+        "AM=M-1", # Decrement FRAME
+        "D=M", # Read FRAME
+        "@THIS", # Address segment to be restore
+        "M=D", # Restore segment
+
+        "@R13", # Get FRAME
+        "AM=M-1", # Decrement FRAME
+        "D=M", # Read FRAME
+        "@ARG", # Address segment to be restore
+        "M=D", # Restore segment
+
+
+        "@R13", # Get FRAME
+        "AM=M-1", # Decrement FRAME
+        "D=M", # Read FRAME
+        "@LCL", # Address segment to be restore
+        "M=D", # Restore segment
+    ])
+
+    # 6. Resume the caller’s code. 
+    # goto RET
+    goto_ret = ('\n').join([
+        "@R14",
+        "A=M",
+        "0;JMP"
+    ])
+
+    return ('\n').join([
+        frame_pointer,
+        ret,         
+        arg_pop,      
+        restore_sp, 
+        reinstall_frame,
+        goto_ret
+    ])
+
 def translate_to_assembly_instruction(vm_instruction, vm_instruction_index, filename):
     class_name = filename.split("/")[-1].replace(".vm", "")
     if vm_instruction['command_type'] == "arithmetic":
@@ -365,6 +471,10 @@ def translate_to_assembly_instruction(vm_instruction, vm_instruction_index, file
         return template_if_goto(vm_instruction['arg1'])
     elif vm_instruction['command_type'] == "label":
         return template_label(vm_instruction['arg1'])
+    elif vm_instruction['command_type'] == "function":
+        return template_function(vm_instruction['arg1'], vm_instruction['arg2'])
+    elif vm_instruction['command_type'] == "return":
+        return template_return()
 
 def main():
     if len(sys.argv) != 2:
