@@ -13,5 +13,5 @@ python3 VMTranslator.py <input.vm>
 Copy this into the existing projects folder and set the web emulator to use a local projects folder.
 
 ```bash
-cp -r tests /path/to/nand2tetris/projects/07/
+cp -r tests /path/to/nand2tetris/projects/0{7/8}/
 ```

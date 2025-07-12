@@ -1,5 +1,7 @@
 import sys
+import os
 import re
+import glob
 
 def parse_vm_instruction(line):
     vm_instruction = {}
@@ -366,21 +368,40 @@ def translate_to_assembly_instruction(vm_instruction, vm_instruction_index, file
     elif vm_instruction['command_type'] == "label":
         return teplate_label(vm_instruction['arg1'])
 
-def main():
-    if len(sys.argv) != 2:
-        print("Usage: python main.py <input_file.vm>")
-        sys.exit(1)
-    input_file = sys.argv[1]
-    output_file = input_file.replace('.vm', '.asm')
-    with open(input_file, 'r') as file:
+def translate_vm_file(input_path):
+    assembly_instructions = []
+    with open(input_path, 'r') as file:
         lines = [re.sub(r'//.*$', '', line) for line in file]
         lines = [line.strip() for line in lines]
         lines = [line for line in lines if line]
 
+        for index, line in enumerate(lines):
+            parsed_vm_instruction = parse_vm_instruction(line)
+            assembly_instruction = translate_to_assembly_instruction(parsed_vm_instruction, index, input_path)
+            assembly_instructions.append(assembly_instruction)
+        
+        return assembly_instructions
+
+def main():
+    if len(sys.argv) != 2:
+        print("Usage: python main.py <input_file.vm> or /<directory with *.vm files>")
+        sys.exit(1)
+    input_path = sys.argv[1]
+    if os.path.isfile(input_path):
+        output_file = input_path.replace('.vm', '.asm')
         with open(output_file, 'w') as out_file:
-            for index, line in enumerate(lines):
-                parsed_vm_instruction = parse_vm_instruction(line)
-                assembly_instruction = translate_to_assembly_instruction(parsed_vm_instruction, index, input_file)
+            for assembly_instruction in translate_vm_file(input_path):
+                print(assembly_instruction)
+                out_file.write(assembly_instruction + '\n')
+
+    elif os.path.isdir(input_path):
+        output_file = input_path + '.asm'
+        vm_files = glob.glob(os.path.join(input_path, "*.vm"))
+        assembly_instructions = []
+        for file in vm_files:
+            assembly_instructions.extend(translate_vm_file(file))
+        with open(output_file, 'w') as out_file:
+            for assembly_instruction in assembly_instructions:
                 print(assembly_instruction)
                 out_file.write(assembly_instruction + '\n')
 
