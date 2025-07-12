@@ -299,7 +299,7 @@ def template_logical_not():
         "M=M+1",
     ])
 
-def teplate_goto(label):
+def template_goto(label):
     return ('\n').join([
         f"@{label}",
         "0;JMP"
@@ -317,7 +317,7 @@ def template_if_goto(label):
                 "D;JNE"
             ])
 
-def teplate_label(label):
+def template_label(label):
     return f"({label})"
 
 def translate_to_assembly_instruction(vm_instruction, vm_instruction_index, filename):
@@ -360,11 +360,11 @@ def translate_to_assembly_instruction(vm_instruction, vm_instruction_index, file
             else:
                 return template_push(vm_instruction['arg1'], vm_instruction['arg2'])
     elif vm_instruction['command_type'] == "goto":
-        return teplate_goto(vm_instruction['arg1'])
+        return template_goto(vm_instruction['arg1'])
     elif vm_instruction['command_type'] == "if-goto":
         return template_if_goto(vm_instruction['arg1'])
     elif vm_instruction['command_type'] == "label":
-        return teplate_label(vm_instruction['arg1'])
+        return template_label(vm_instruction['arg1'])
 
 def main():
     if len(sys.argv) != 2:
